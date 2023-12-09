@@ -5,10 +5,10 @@
 
         private function __construct()
         {
-            $db_host = "wheatley.cs.up.ac.za";
-            $db_user = "u22906160";
-            $db_pass = "TOMLSBUEGYJLA3T2TKN3QVB4TRNNWVNT";
-            $db_name = "u22906160_BrandRace";
+            $db_host = "";
+            $db_user = "";
+            $db_pass = "";
+            $db_name = "";
 
             $this->connection = new mysqli($db_host, $db_user, $db_pass, $db_name);
 
