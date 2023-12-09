@@ -1,0 +1,57 @@
+
+
+
+// Handle LIST command
+socket.on('list', () => {
+    const connections = [];
+
+    // Build the list of connected clients with their usernames and socket IDs
+    for (let [username, socketId] of connectedClients) {
+    connections.push({ username, socketId });
+    }
+
+    // Emit the list of connections back to the client
+    socket.emit('connection list', connections);
+});
+
+    // Handle kill command
+socket.on('kill', (username) => {
+  const socketId = connectedClients.get(username);
+
+  if (socketId) {
+      io.to(socketId).emit('disconnect');
+      connectedClients.delete(username);
+      console.log(`Connection closed for user ${username}`);
+  } else {
+      console.log(`User ${username} not found`);
+  }
+});
+
+// Handle GAMES command
+socket.on('games', () => {
+  const gameList = [];
+
+  // Build the list of games with their GameID and players' usernames
+  games.forEach((players, gameId) => {
+      gameList.push({ gameId, players });
+  });
+
+  // Emit the list of games back to the client
+  socket.emit('game list', gameList);
+});
+// Handle QUIT command
+socket.on('quit', () => {
+    // Emit a broadcast message to all connected clients
+    io.emit('server offline', 'Server is going offline. Goodbye!');
+
+    // Close all connections
+    connectedClients.forEach((id) => {
+    io.sockets.sockets.get(id).disconnect(true);
+    });
+
+    // Clear the connectedClients map
+    connectedClients.clear();
+
+    console.log('Server is going offline. Goodbye!');
+    process.exit(); // Exit the server process
+});

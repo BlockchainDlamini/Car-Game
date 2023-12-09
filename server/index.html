@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket Client</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.7.0/dist/css/bootstrap.min.css">
+</head>
+
+<body>
+  <div class="container mt-5">
+    <h1 class="mb-4">Brand Race</h1>
+    <div id="portInput">
+      <div class="mb-3">
+        <label for="port" class="form-label">Port Number:</label>
+        <input type="text" class="form-control" id="port" placeholder="Port number">
+      </div>
+      <button type="button" class="btn btn-primary" onclick="handlePort()">Submit</button>
+    </div>
+    <div id="usernameInput" style="display: none;">
+      <div class="mb-3">
+        <label for="username" class="form-label">Enter your username:</label>
+        <input type="text" class="form-control" id="username" placeholder="Username">
+      </div>
+      <button type="button" class="btn btn-primary" onclick="handleUsername()">Submit</button>
+    </div>
+    <div id="gameOptions" style="display: none;">
+      <div class="mb-3">
+        <label for="gameId" class="form-label">Enter a Game ID:</label>
+        <input type="text" class="form-control" id="gameId" placeholder="Game ID">
+      </div>
+      <button type="button" class="btn btn-primary" onclick="joinGame()">Join Game</button>
+      <button type="button" class="btn btn-primary" onclick="createGame()">Create Game</button>
+    </div>
+    <div id="gameLoop" style="display: none;">
+      <div id="imageContainer">
+        <img id="carImage" src="path/to/image.jpg" alt="Car Image">
+      </div>
+      <label id="timerLabel">Timer: </label>
+      <div>
+        <input type="text" id="carBrandInput" placeholder="Enter the car brand">
+        <button id="submitBtn" onclick="handleAnswer()">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+  <script>
+    let username = "";
+    const serverUrl = 'http://localhost';
+    const successClass = 'alert-success';
+    const failClass = 'alert-failed';
+    let socket;
+
+    function handlePort() {
+      const portstring = document.getElementById("port").value.trim();
+      if (portstring !== '') {
+        const port = parseInt(portstring);
+        socket = io(`${serverUrl}:${port}`);
+        socket.on('connect', (socket) => {
+          const paragraphs = document.querySelectorAll('p');
+          paragraphs.forEach((paragraph) => {
+            paragraph.remove();
+          });
+          document.getElementById("portInput").style.display = "none";
+          document.getElementById("usernameInput").style.display = "block";
+        });
+      } else {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = 'Please enter a valid port number (1024-49151):';
+        paragraph.classList.add('error');
+        document.body.appendChild(paragraph);
+      }
+    }
+
+    function handleUsername() {
+      username = document.getElementById("username").value;
+      socket.emit('set username', username);
+      if (socket.dupuser !== undefined) {
+        socket.on('username taken', (message) => {
+          alert(message);
+        });
+     } else {
+      alert('Username created successfully!');
+      document.getElementById("usernameInput").style.display = "none";
+      document.getElementById("gameOptions").style.display = "block";
+      }
+      
+    }
+
+    function joinGame() {
+      const gameId = document.getElementById("gameId").value;
+      socket.emit('join game', gameId);
+      socket.on('game joined', (gamecode) => {
+        alert('Joined GameID: ' + gamecode);
+        startCountdown();
+        document.getElementById("gameOptions").style.display = "none";
+        document.getElementById("gameLoop").style.display = "block";
+      });
+
+      socket.on('game full', (message) => {
+        alert(message);
+      });
+
+      socket.on('game not found', (message) => {
+        alert(message);
+      });
+    }
+
+    function createGame() {
+      socket.emit('create game');
+      socket.on('game created', (gamecode) => {
+        alert('GameID created: ' + gamecode);
+      });
+      startCountdown();
+      document.getElementById("gameOptions").style.display = "none";
+      document.getElementById("gameLoop").style.display = "block";
+    }
+
+
+    function handleAnswer() {
+      const answer = document.getElementById('carBrandInput').value;
+      socket.on('cars', (data) => {
+        const carimage = document.getElementById('carImage');
+        carimage.src = data['brand_link'];
+      });
+      socket.emit('answer', socket.username, answer);
+      socket.on('correct', (message) =>{
+        alert(message);
+      });
+      socket.on('incorrect', (message) => {
+        alert(message);
+      })
+      socket.on('game end', (data) => {
+        alert('Final score \n' + data);
+        document.getElementById("gameLoop").style.display = "none";
+        document.getElementById("gameOptions").style.display = "block";
+      });
+    }
+
+    function countdown(duration, display) {
+      var timer = duration,
+        seconds;
+      var timeInterval = setInterval(function () {
+        seconds = parseInt(timer % 60, 10);
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+        display.textContent = "Timer: 00:" + seconds;
+
+        if (--timer < 0) {
+          clearInterval(timerInterval);
+        }
+      }, 1000);
+    }
+
+    function startCountdown() {
+      var timerDuration = 10; // 10 seconds
+      var timerDisplay = document.getElementById("timerLabel");
+      countdown(timerDuration, timerDisplay);
+    }
+
+    socket.on('connected', (message) => {
+      alert(message);
+    });
+
+    socket.on('games start', () => {
+      startCountdown();
+    });
+    
+  </script>
+  <style>
+    body {
+      background-color: #1f1f1f;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      margin-top: 5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-label {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .form-control {
+      background-color: #333;
+      color: #fff;
+      width: 20rem;
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      border: none;
+      border-radius: 0.3rem;
+    }
+
+    .btn-primary {
+      background-color: #007bff;
+      color: #fff;
+      font-size: 1.2rem;
+      padding: 0.6rem 1rem;
+      margin-left: 0.5rem;
+      border: none;
+      border-radius: 0.3rem;
+    }
+
+    #gameLoop {
+      display: none;
+    }
+
+    #imageContainer {
+      width: 500px;
+      height: 200px;
+      border: 1px solid #ccc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #carImage {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #timerLabel {
+      display: block;
+      font-size: 1.2rem;
+      margin-top: 1rem;
+    }
+
+    #carBrandInput {
+      width: 20rem;
+      font-size: 1.2rem;
+      padding: 0.6rem;
+    }
+
+    #submitBtn {
+      background-color: #007bff;
+      color: #fff;
+      font-size: 1.2rem;
+      padding: 0.6rem 1rem;
+      margin-top: 1rem;
+      border: none;
+      border-radius: 0.3rem;
+    }
+
+    .error {
+      color: red;
+    }
+
+    .success {
+      color: green;
+    }
+  </style>
+</body>
+</html>
